@@ -30,23 +30,44 @@ local Tomato =
     oy = 0
 }
 Tomato.__index = Tomato
-function Tomato.new(img, name, x, y) --maybe change name to id (number)
+function Tomato.new(img, id, x, y) --id = number of image .. length of tomatoes table .. constantSpawnInterval
     local windowWidth, windowHeight = love.graphics.getDimensions()
     local tomato = setmetatable({}, Tomato)
     tomato.x = x or windowWidth/2
     tomato.y = y or windowHeight/2
     tomato.image = img
-    tomato.name = name
+    tomato.id = id
+    tomato.isDragging = false
     return tomato
 end
 
+--window and scenes (1 - menu, 2 - game)
+local currentScene = 2
+local VIRTUAL_WIDTH = 1280
+local VIRTUAL_HEIGHT = 720
+local scale = 1
+local offsetX, offsetY = 0, 0
+
+--rarely used functions
+local toVirtualCoords
+local closeEnough
+local countTomatoes
+local moveTomatoToBowl
+
+--tomatoes
 local Tomatoes = {}
---timer
-local countdownTime = 180 --in seconds
+local TomatoImages = {}
+local TotalTomatoes = {}
+--timers
+local countdownTime = 60 --in seconds
 local timeLeft = countdownTime
 local isTimerRunning = true
 local ConstantSpawnInterval = 3 --in seconds
 local SpawnInterval = ConstantSpawnInterval
+local clickTimer = 0   
+
+--text
+local TotalTomatoCount
 
 local function TimerUpdate(dt) --later make timer for this game (adapt)
     if isTimerRunning then
@@ -72,7 +93,8 @@ local function SpawnTomato(dt)
         SpawnInterval = SpawnInterval - dt
 
     elseif SpawnInterval < 0 then
-        table.insert(Tomatoes, Tomato.new(love.graphics.newImage("sprites/green_tomato.png"), "Green", 640, 360))
+        local RandInt = math.random(1, 4)
+        table.insert(Tomatoes, Tomato.new(TomatoImages[RandInt], (RandInt..#Tomatoes..ConstantSpawnInterval), 640, 360))
         SpawnInterval = ConstantSpawnInterval
     end
 
@@ -88,14 +110,85 @@ function love.load()
 
     }
 
+    TomatoImages = 
+    {
+        love.graphics.newImage("sprites/green_tomato.png"),
+        love.graphics.newImage("sprites/orange_tomato.png"),
+        love.graphics.newImage("sprites/red_tomato.png"),
+        love.graphics.newImage("sprites/yellow_tomato.png")
+    }
+
 end
 
 function love.update(dt)
     flux.update(dt)
     TimerUpdate(dt)
     SpawnTomato(dt)
+    if clickTimer > 0 then
+        clickTimer = clickTimer - dt
+    end
+
+    for ing, tomato in pairs(Tomatoes) do
+        if tomato.isDragging == true then
+            local TomatoId = tonumber(string.sub(tostring(tomato.id:match("%d+")), 1, 1))
+            if closeEnough(tomato.x, tomato.y, BowlsToPut[TomatoId].x, BowlsToPut[TomatoId].y, 100) then
+                moveTomatoToBowl(tomato)
+                countTomatoes(tomato)
+                tomato.isDragging = false --maybe change later
+                break
+            end
+
+            local MouseX, MouseY = toVirtualCoords(love.mouse.getX(), love.mouse.getY())
+            tomato.x = MouseX - tomato.ox
+            tomato.y = MouseY - tomato.oy
+        end
+    end
+end
+
+function love.mousepressed(mx, my, button, istouch, presses)
+    local mouseX, mouseY = toVirtualCoords(mx, my)
+
+    local function CheckWhereClickedVegetable(PassedTable, scale)
+        local toInsert = nil
+        if clickTimer <= 0 then
+            for tab, tomato in pairs(PassedTable) do
+                local w = tomato.image:getWidth() * scale
+                local h = tomato.image:getHeight() * scale
+
+                local isClicked = mouseX >= tomato.x - w/2 and mouseX <= tomato.x + w/2
+                            and mouseY >= tomato.y - h/2 and mouseY <= tomato.y + h/2
+
+                if isClicked and tomato.isDragging == false then
+                    tomato.isDragging = true
+                    tomato.ox = mouseX - tomato.x
+                    tomato.oy = mouseY - tomato.y
+                    break
+                end
+            end
+
+            if toInsert then
+                table.insert(PassedTable, toInsert)
+            end
+        end
+    end
+
+    if button == 1 then
+        CheckWhereClickedVegetable(Tomatoes, 1)
+
+    end
 
 end
+
+function love.mousereleased(mx, my, button, istouch, presses)
+    if button == 1 then
+        for ing, tomato in pairs(Tomatoes) do
+            if tomato.isDragging == true then
+                tomato.isDragging = false
+            end
+        end 
+    end
+end
+
 
 function love.draw()
     local minutes = math.floor(timeLeft / 60)
@@ -107,6 +200,7 @@ function love.draw()
         love.graphics.rectangle("fill", 50, 50, 115, 25)
         love.graphics.setColor(255, 255, 255)
         love.graphics.print(timerText, 50, 50, 0, 1, 1) --timer
+        love.graphics.print(tostring(#TotalTomatoes), 1200, 50, 0, 1, 1) --tomatoCount
 
     end
 
@@ -121,4 +215,46 @@ function love.draw()
             love.graphics.draw(tomato.image, tomato.x, tomato.y, 0, 1, 1, tomato.image:getWidth()/2, tomato.image:getHeight()/2)
         end
     end
+
+    for i, tomato in pairs(TotalTomatoes) do
+        if tomato ~= nil then
+            love.graphics.draw(tomato.image, tomato.x, tomato.y, 0, 1, 1, tomato.image:getWidth()/2, tomato.image:getHeight()/2)
+        end
+    end
+end
+
+toVirtualCoords = function(screenX, screenY)
+    local virtualX = (screenX - offsetX) / scale
+    local virtualY = (screenY - offsetY) / scale
+
+    virtualX = math.max(0, math.min(virtualX, VIRTUAL_WIDTH))
+    virtualY = math.max(0, math.min(virtualY, VIRTUAL_HEIGHT))
+    
+    return virtualX, virtualY
+end
+
+closeEnough = function(x1, y1, x2, y2, maxDistance)
+    local dx = x1 - x2
+    local dy = y1 - y2
+    local distance = math.sqrt(dx * dx + dy * dy)
+    return distance < maxDistance
+end
+
+moveTomatoToBowl = function(tomato)
+    local TomatoId = tonumber(string.sub(tostring(tomato.id:match("%d+")), 1, 1))
+    tomato.x = BowlsToPut[TomatoId].x + math.random(0, 10)
+    tomato.y = BowlsToPut[TomatoId].y + math.random(0, 10)
+    
+    for tab, tomato in ipairs(Tomatoes) do
+        for i, slice in pairs(TotalTomatoes) do
+            if slice.name == tomato.name and closeEnough(tomato.x, tomato.y, slice.x, slice.y, 100) then
+                table.remove(Tomatoes, tab)
+            end
+        end
+    end
+end
+
+countTomatoes = function(tomato)
+    table.insert(TotalTomatoes, tomato)
+
 end
