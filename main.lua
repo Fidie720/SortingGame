@@ -22,6 +22,14 @@ end
 
 local BowlsToPut
 
+local ConstBowlCoords = 
+{
+    {x = 300, y = 200},
+    {x = 300, y = 500},
+    {x = 950, y = 200},
+    {x = 950, y = 500}
+}
+
 local Tomato = 
 {
     x = 0,
@@ -53,13 +61,15 @@ local toVirtualCoords
 local closeEnough
 local countTomatoes
 local moveTomatoToBowl
+local ShuffleBowls
+local RemoveTomatoes
 
 --tomatoes
 local Tomatoes = {}
 local TomatoImages = {}
 local TotalTomatoes = {}
 --timers
-local countdownTime = 60 --in seconds
+local countdownTime = 5 --in seconds
 local timeLeft = countdownTime
 local isTimerRunning = true
 local ConstantSpawnInterval = 3 --in seconds
@@ -78,12 +88,11 @@ local function TimerUpdate(dt) --later make timer for this game (adapt)
         end
     end
 
-    if WinnerChosen and not isTimerRunning then
-        breaktimeLeft = breaktimeLeft - dt
-        if breaktimeLeft <= 0 then
-            timeLeft = countdownTime
-            isTimerRunning = true
-        end
+    if not isTimerRunning then
+        ShuffleBowls()
+        RemoveTomatoes()
+        timeLeft = countdownTime
+        isTimerRunning = true
     end
 
 end
@@ -103,11 +112,10 @@ end
 function love.load()
     BowlsToPut = 
     {
-        Bowl.new(love.graphics.newImage("sprites/Bowl.png"), "LeftUpperBowl", 300, 200),
-        Bowl.new(love.graphics.newImage("sprites/Bowl.png"), "LeftUBottomBowl", 300, 500),
-        Bowl.new(love.graphics.newImage("sprites/Bowl.png"), "RightUpperBowl", 950, 200),
-        Bowl.new(love.graphics.newImage("sprites/Bowl.png"), "RightUBottomBowl", 950, 500),
-
+        Bowl.new(love.graphics.newImage("sprites/Green_Bowl.png"), "LeftUpperBowl", 300, 200),
+        Bowl.new(love.graphics.newImage("sprites/Orange_Bowl.png"), "LeftBottomBowl", 300, 500),
+        Bowl.new(love.graphics.newImage("sprites/Red_Bowl.png"), "RightUpperBowl", 950, 200),
+        Bowl.new(love.graphics.newImage("sprites/Yellow_Bowl.png"), "RightUBottomBowl", 950, 500),
     }
 
     TomatoImages = 
@@ -256,5 +264,32 @@ end
 
 countTomatoes = function(tomato)
     table.insert(TotalTomatoes, tomato)
+
+end
+
+ShuffleBowls = function()
+    local NewBowlCoords = {}
+    for i, coord in ipairs(ConstBowlCoords) do
+        NewBowlCoords[i] = coord
+    end
+
+    print("Changing bowls")
+    for b, bowl in pairs(BowlsToPut) do
+        local NewCoords = math.random(1, #NewBowlCoords)
+        bowl.x = NewBowlCoords[NewCoords].x
+        bowl.y = NewBowlCoords[NewCoords].y
+        table.remove(NewBowlCoords, NewCoords)
+    end
+end
+
+RemoveTomatoes = function()
+    for i, slice in pairs(TotalTomatoes) do
+        TotalTomatoes[i] = nil
+    end
+
+    for i, slice in pairs(Tomatoes) do
+        Tomatoes[i] = nil
+    end
+
 
 end
