@@ -50,7 +50,7 @@ function Tomato.new(img, id, x, y) --id = number of image .. length of tomatoes 
 end
 
 --window and scenes (1 - menu, 2 - game)
-local currentScene = 2
+local currentScene = 1
 local VIRTUAL_WIDTH = 1280
 local VIRTUAL_HEIGHT = 720
 local scale = 1
@@ -63,13 +63,14 @@ local countTomatoes
 local moveTomatoToBowl
 local ShuffleBowls
 local RemoveTomatoes
+local isInsideButton
 
 --tomatoes
 local Tomatoes = {}
 local TomatoImages = {}
 local TotalTomatoes = {}
 --timers
-local countdownTime = 5 --in seconds
+local countdownTime = 60 --in seconds
 local timeLeft = countdownTime
 local isTimerRunning = true
 local ConstantSpawnInterval = 3 --in seconds
@@ -78,6 +79,10 @@ local clickTimer = 0
 
 --text
 local TotalTomatoCount
+
+--menu UI
+local startButton
+local Background --maybe change later, because this one is AI generated
 
 local function TimerUpdate(dt) --later make timer for this game (adapt)
     if isTimerRunning then
@@ -102,14 +107,25 @@ local function SpawnTomato(dt)
         SpawnInterval = SpawnInterval - dt
 
     elseif SpawnInterval < 0 then
-        local RandInt = math.random(1, 4)
+        local RandInt = love.math.random(1, 4)
         table.insert(Tomatoes, Tomato.new(TomatoImages[RandInt], (RandInt..#Tomatoes..ConstantSpawnInterval), 640, 360))
-        SpawnInterval = ConstantSpawnInterval
+        SpawnInterval = love.math.random(1, ConstantSpawnInterval)
     end
 
 end
 
 function love.load()
+    startButton = ButtonManager.new("Start Game", VIRTUAL_WIDTH/2 - 50, VIRTUAL_HEIGHT/2 - 150, 150, 150)
+    startButton:setAlignment('center')
+    startButton:setLabel("")
+    startButton:setImage(love.graphics.newImage("sprites/Play.png"))
+    startButton.onClick = function()
+        print("Pressing a button")
+        currentScene = 2
+    end
+
+    Background = love.graphics.newImage("sprites/Background.png")
+
     BowlsToPut = 
     {
         Bowl.new(love.graphics.newImage("sprites/Green_Bowl.png"), "LeftUpperBowl", 300, 200),
@@ -130,31 +146,43 @@ end
 
 function love.update(dt)
     flux.update(dt)
-    TimerUpdate(dt)
-    SpawnTomato(dt)
-    if clickTimer > 0 then
-        clickTimer = clickTimer - dt
-    end
+    ButtonManager.update(dt)
 
-    for ing, tomato in pairs(Tomatoes) do
-        if tomato.isDragging == true then
-            local TomatoId = tonumber(string.sub(tostring(tomato.id:match("%d+")), 1, 1))
-            if closeEnough(tomato.x, tomato.y, BowlsToPut[TomatoId].x, BowlsToPut[TomatoId].y, 100) then
-                moveTomatoToBowl(tomato)
-                countTomatoes(tomato)
-                tomato.isDragging = false --maybe change later
-                break
+    if currentScene == 2 then
+        if clickTimer > 0 then
+            clickTimer = clickTimer - dt
+        end
+        TimerUpdate(dt)
+        SpawnTomato(dt)
+
+        for ing, tomato in pairs(Tomatoes) do
+            if tomato.isDragging == true then
+                local TomatoId = tonumber(string.sub(tostring(tomato.id:match("%d+")), 1, 1))
+                if closeEnough(tomato.x, tomato.y, BowlsToPut[TomatoId].x, BowlsToPut[TomatoId].y, 100) then
+                    moveTomatoToBowl(tomato)
+                    countTomatoes(tomato)
+                    tomato.isDragging = false --maybe change later
+                    break
+                end
+    
+                local MouseX, MouseY = toVirtualCoords(love.mouse.getX(), love.mouse.getY())
+                tomato.x = MouseX - tomato.ox
+                tomato.y = MouseY - tomato.oy
             end
-
-            local MouseX, MouseY = toVirtualCoords(love.mouse.getX(), love.mouse.getY())
-            tomato.x = MouseX - tomato.ox
-            tomato.y = MouseY - tomato.oy
         end
     end
+
+    
 end
 
 function love.mousepressed(mx, my, button, istouch, presses)
     local mouseX, mouseY = toVirtualCoords(mx, my)
+
+    if currentScene == 1 then
+        if startButton and isInsideButton(mouseX, mouseY, startButton) then
+            currentScene = 2
+        end
+    end
 
     local function CheckWhereClickedVegetable(PassedTable, scale)
         local toInsert = nil
@@ -199,36 +227,49 @@ end
 
 
 function love.draw()
-    local minutes = math.floor(timeLeft / 60)
-    local seconds = math.floor(timeLeft % 60)
-    local timerText = string.format("Time: %02d:%02d", minutes, seconds)
+    love.graphics.draw(Background, 0, 0)
 
-    if isTimerRunning then
-        love.graphics.setColor(0, 0, 0)
-        love.graphics.rectangle("fill", 50, 50, 115, 25)
-        love.graphics.setColor(255, 255, 255)
-        love.graphics.print(timerText, 50, 50, 0, 1, 1) --timer
-        love.graphics.print(tostring(#TotalTomatoes), 1200, 50, 0, 1, 1) --tomatoCount
+    if currentScene == 1 then
+        ButtonManager.draw()
 
-    end
 
-    for i, bowl in pairs(BowlsToPut) do
-        if bowl ~= nil then
-            love.graphics.draw(bowl.image, bowl.x, bowl.y, 0, 1, 1, bowl.image:getWidth()/2, bowl.image:getHeight()/2)
+    elseif currentScene == 2 then
+        local minutes = math.floor(timeLeft / 60)
+        local seconds = math.floor(timeLeft % 60)
+        local timerText = string.format("Time: %02d:%02d", minutes, seconds)
+    
+        if isTimerRunning then
+            love.graphics.setColor(0, 0, 0)
+            love.graphics.rectangle("fill", 50, 50, 75, 20)
+            love.graphics.setColor(255, 255, 255)
+            love.graphics.print(timerText, 50, 50, 0, 1, 1) --timer
+            love.graphics.setColor(0, 0, 0)
+            love.graphics.rectangle("fill", 1200, 50, 15, 15)
+            love.graphics.setColor(255, 255, 255)
+            love.graphics.print(tostring(#TotalTomatoes), 1200, 50, 0, 1, 1) --tomatoCount
+    
         end
+    
+        for i, bowl in pairs(BowlsToPut) do
+            if bowl ~= nil then
+                love.graphics.draw(bowl.image, bowl.x, bowl.y, 0, 1, 1, bowl.image:getWidth()/2, bowl.image:getHeight()/2)
+            end
+        end
+    
+        for i, tomato in pairs(Tomatoes) do
+            if tomato ~= nil then
+                love.graphics.draw(tomato.image, tomato.x, tomato.y, 0, 1, 1, tomato.image:getWidth()/2, tomato.image:getHeight()/2)
+            end
+        end
+    
+        for i, tomato in pairs(TotalTomatoes) do
+            if tomato ~= nil then
+                love.graphics.draw(tomato.image, tomato.x, tomato.y, 0, 1, 1, tomato.image:getWidth()/2, tomato.image:getHeight()/2)
+            end
+        end
+
     end
 
-    for i, tomato in pairs(Tomatoes) do
-        if tomato ~= nil then
-            love.graphics.draw(tomato.image, tomato.x, tomato.y, 0, 1, 1, tomato.image:getWidth()/2, tomato.image:getHeight()/2)
-        end
-    end
-
-    for i, tomato in pairs(TotalTomatoes) do
-        if tomato ~= nil then
-            love.graphics.draw(tomato.image, tomato.x, tomato.y, 0, 1, 1, tomato.image:getWidth()/2, tomato.image:getHeight()/2)
-        end
-    end
 end
 
 toVirtualCoords = function(screenX, screenY)
@@ -250,8 +291,8 @@ end
 
 moveTomatoToBowl = function(tomato)
     local TomatoId = tonumber(string.sub(tostring(tomato.id:match("%d+")), 1, 1))
-    tomato.x = BowlsToPut[TomatoId].x + math.random(0, 10)
-    tomato.y = BowlsToPut[TomatoId].y + math.random(0, 10)
+    tomato.x = BowlsToPut[TomatoId].x + love.math.random(0, 10)
+    tomato.y = BowlsToPut[TomatoId].y + love.math.random(0, 10)
     
     for tab, tomato in ipairs(Tomatoes) do
         for i, slice in pairs(TotalTomatoes) do
@@ -275,7 +316,7 @@ ShuffleBowls = function()
 
     print("Changing bowls")
     for b, bowl in pairs(BowlsToPut) do
-        local NewCoords = math.random(1, #NewBowlCoords)
+        local NewCoords = love.math.random(1, #NewBowlCoords)
         bowl.x = NewBowlCoords[NewCoords].x
         bowl.y = NewBowlCoords[NewCoords].y
         table.remove(NewBowlCoords, NewCoords)
@@ -290,6 +331,9 @@ RemoveTomatoes = function()
     for i, slice in pairs(Tomatoes) do
         Tomatoes[i] = nil
     end
+end
 
-
+isInsideButton = function (x, y, btn)
+    return x >= btn.x and x <= btn.x + btn.width
+       and y >= btn.y and y <= btn.y + btn.height
 end
