@@ -73,9 +73,14 @@ local TotalTomatoes = {}
 local countdownTime = 60 --in seconds
 local timeLeft = countdownTime
 local isTimerRunning = true
-local ConstantSpawnInterval = 3 --in seconds
+local ConstantSpawnInterval = 2 --in seconds
 local SpawnInterval = ConstantSpawnInterval
-local clickTimer = 0   
+local clickTimer = 0
+local breakTime = 10
+local breaktimeLeft = breakTime
+local ConstantminSpawnInterval = 1
+local minSpawnInterval = ConstantminSpawnInterval
+
 
 --text
 local TotalTomatoCount
@@ -84,6 +89,9 @@ local TotalTomatoCount
 local startButton
 local Background --maybe change later, because this one is AI generated
 
+--bools
+local AreTomatoesRemoved = false
+
 local function TimerUpdate(dt) --later make timer for this game (adapt)
     if isTimerRunning then
         timeLeft = timeLeft - dt
@@ -91,25 +99,32 @@ local function TimerUpdate(dt) --later make timer for this game (adapt)
             timeLeft = 0
             isTimerRunning = false
         end
-    end
 
-    if not isTimerRunning then
+    elseif not isTimerRunning then
         ShuffleBowls()
         RemoveTomatoes()
-        timeLeft = countdownTime
-        isTimerRunning = true
+        breaktimeLeft = breaktimeLeft - dt
+        if breaktimeLeft <= 0 then
+            timeLeft = countdownTime
+            isTimerRunning = true
+            breaktimeLeft = breakTime
+            AreTomatoesRemoved = false
+            minSpawnInterval = ConstantSpawnInterval
+        end
     end
-
 end
 
 local function SpawnTomato(dt)
+    if not isTimerRunning then return end
+
     if SpawnInterval >= 0 then
         SpawnInterval = SpawnInterval - dt
 
     elseif SpawnInterval < 0 then
         local RandInt = love.math.random(1, 4)
-        table.insert(Tomatoes, Tomato.new(TomatoImages[RandInt], (RandInt..#Tomatoes..ConstantSpawnInterval), 640, 360))
+        table.insert(Tomatoes, Tomato.new(TomatoImages[RandInt], (RandInt..#Tomatoes..ConstantSpawnInterval), (640 + love.math.random(-50, 50)), (360+ love.math.random(-50, 50))))
         SpawnInterval = love.math.random(1, ConstantSpawnInterval)
+        minSpawnInterval = minSpawnInterval - love.math.random(0, 0.1)
     end
 
 end
@@ -118,6 +133,7 @@ function love.load()
     startButton = ButtonManager.new("Start Game", VIRTUAL_WIDTH/2 - 50, VIRTUAL_HEIGHT/2 - 150, 150, 150)
     startButton:setAlignment('center')
     startButton:setLabel("")
+
     startButton:setImage(love.graphics.newImage("sprites/Play.png"))
     startButton.onClick = function()
         print("Pressing a button")
@@ -234,11 +250,15 @@ function love.draw()
 
 
     elseif currentScene == 2 then
-        local minutes = math.floor(timeLeft / 60)
-        local seconds = math.floor(timeLeft % 60)
-        local timerText = string.format("Time: %02d:%02d", minutes, seconds)
+        local minutes
+        local seconds
+        local timerText 
     
         if isTimerRunning then
+            minutes = math.floor(timeLeft / 60)
+            seconds = math.floor(timeLeft % 60)
+            timerText = string.format("Time: %02d:%02d", minutes, seconds)
+
             love.graphics.setColor(0, 0, 0)
             love.graphics.rectangle("fill", 50, 50, 75, 20)
             love.graphics.setColor(255, 255, 255)
@@ -247,7 +267,16 @@ function love.draw()
             love.graphics.rectangle("fill", 1200, 50, 15, 15)
             love.graphics.setColor(255, 255, 255)
             love.graphics.print(tostring(#TotalTomatoes), 1200, 50, 0, 1, 1) --tomatoCount
-    
+        elseif not isTimerRunning then
+            minutes = math.floor(breaktimeLeft / 60)
+            seconds = math.floor(breaktimeLeft % 60)
+            timerText = string.format("Time: %02d:%02d", minutes, seconds)
+
+            love.graphics.setColor(0, 0, 0)
+            love.graphics.rectangle("fill", 50, 50, 75, 20)
+            love.graphics.setColor(255, 255, 255)
+            love.graphics.print(timerText, 50, 50, 0, 1, 1) --timer
+
         end
     
         for i, bowl in pairs(BowlsToPut) do
@@ -309,28 +338,35 @@ countTomatoes = function(tomato)
 end
 
 ShuffleBowls = function()
-    local NewBowlCoords = {}
-    for i, coord in ipairs(ConstBowlCoords) do
-        NewBowlCoords[i] = coord
-    end
+    if not AreTomatoesRemoved then
+        local NewBowlCoords = {}
+        for i, coord in ipairs(ConstBowlCoords) do
+            NewBowlCoords[i] = coord
+        end
 
-    print("Changing bowls")
-    for b, bowl in pairs(BowlsToPut) do
-        local NewCoords = love.math.random(1, #NewBowlCoords)
-        bowl.x = NewBowlCoords[NewCoords].x
-        bowl.y = NewBowlCoords[NewCoords].y
-        table.remove(NewBowlCoords, NewCoords)
+        print("Changing bowls")
+        for b, bowl in pairs(BowlsToPut) do
+            local NewCoords = love.math.random(1, #NewBowlCoords)
+            bowl.x = NewBowlCoords[NewCoords].x
+            bowl.y = NewBowlCoords[NewCoords].y
+            table.remove(NewBowlCoords, NewCoords)
+        end
     end
+   
 end
 
 RemoveTomatoes = function()
-    for i, slice in pairs(TotalTomatoes) do
-        TotalTomatoes[i] = nil
+    if not AreTomatoesRemoved then
+        for i, slice in pairs(TotalTomatoes) do
+            TotalTomatoes[i] = nil
+        end
+    
+        for i, slice in pairs(Tomatoes) do
+            Tomatoes[i] = nil
+        end
+        AreTomatoesRemoved = true
     end
 
-    for i, slice in pairs(Tomatoes) do
-        Tomatoes[i] = nil
-    end
 end
 
 isInsideButton = function (x, y, btn)
