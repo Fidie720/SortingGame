@@ -64,6 +64,7 @@ local moveTomatoToBowl
 local ShuffleBowls
 local RemoveTomatoes
 local isInsideButton
+local LoopTheGame
 
 --tomatoes
 local Tomatoes = {}
@@ -76,21 +77,30 @@ local isTimerRunning = true
 local ConstantSpawnInterval = 2 --in seconds
 local SpawnInterval = ConstantSpawnInterval
 local clickTimer = 0
-local breakTime = 10
+local breakTime = 5
 local breaktimeLeft = breakTime
 local ConstantminSpawnInterval = 1
 local minSpawnInterval = ConstantminSpawnInterval
-
 
 --text
 local TotalTomatoCount
 
 --menu UI
 local startButton
+local loopButton
 local Background --maybe change later, because this one is AI generated
+local LoopOffImage
+local LoopOnImage
+
+--game UI
+local exitButton --button to exit to menu
+local MenuButtons = {}
+local GameButtons = {}
 
 --bools
 local AreTomatoesRemoved = false
+local LoopIsOn = false
+
 
 local function TimerUpdate(dt) --later make timer for this game (adapt)
     if isTimerRunning then
@@ -103,14 +113,26 @@ local function TimerUpdate(dt) --later make timer for this game (adapt)
     elseif not isTimerRunning then
         ShuffleBowls()
         RemoveTomatoes()
-        breaktimeLeft = breaktimeLeft - dt
-        if breaktimeLeft <= 0 then
+
+        if LoopIsOn then
+            breaktimeLeft = breaktimeLeft - dt
+            if breaktimeLeft <= 0 then
+                timeLeft = countdownTime
+                isTimerRunning = true
+                breaktimeLeft = breakTime
+                AreTomatoesRemoved = false
+                minSpawnInterval = ConstantSpawnInterval
+                return
+            end
+        else
             timeLeft = countdownTime
             isTimerRunning = true
             breaktimeLeft = breakTime
             AreTomatoesRemoved = false
             minSpawnInterval = ConstantSpawnInterval
+            currentScene = 1
         end
+       
     end
 end
 
@@ -135,10 +157,23 @@ function love.load()
     startButton:setLabel("")
 
     startButton:setImage(love.graphics.newImage("sprites/Play.png"))
-    startButton.onClick = function()
-        print("Pressing a button")
-        currentScene = 2
-    end
+
+    loopButton = ButtonManager.new("Loop Game", VIRTUAL_WIDTH - 200, 150, 150, 150)
+    loopButton:setAlignment('center')
+    loopButton:setLabel("")
+
+    LoopOffImage = love.graphics.newImage("sprites/LoopOff.png")
+    LoopOnImage = love.graphics.newImage("sprites/LoopOn.png")
+
+    loopButton:setImage(LoopOffImage)
+    MenuButtons = {startButton, loopButton}
+
+    exitButton = ButtonManager.new("Exit Game", VIRTUAL_WIDTH/2, 50, 70, 70)
+    exitButton:setAlignment('center')
+    exitButton:setLabel("")
+    exitButton:setImage(love.graphics.newImage("sprites/ExitButton.png"))
+
+    GameButtons = {exitButton}
 
     Background = love.graphics.newImage("sprites/Background.png")
 
@@ -198,6 +233,10 @@ function love.mousepressed(mx, my, button, istouch, presses)
         if startButton and isInsideButton(mouseX, mouseY, startButton) then
             currentScene = 2
         end
+
+        if loopButton and isInsideButton(mouseX, mouseY, loopButton) then
+            LoopTheGame()
+        end
     end
 
     local function CheckWhereClickedVegetable(PassedTable, scale)
@@ -229,7 +268,20 @@ function love.mousepressed(mx, my, button, istouch, presses)
 
     end
 
+    if exitButton and isInsideButton(mouseX, mouseY, exitButton) then
+        print("hellow")
+        timeLeft = countdownTime
+        breaktimeLeft = breakTime
+        minSpawnInterval = ConstantSpawnInterval
+        RemoveTomatoes()
+        AreTomatoesRemoved = false
+        currentScene = 1
+
+    end
+
 end
+
+
 
 function love.mousereleased(mx, my, button, istouch, presses)
     if button == 1 then
@@ -246,13 +298,19 @@ function love.draw()
     love.graphics.draw(Background, 0, 0)
 
     if currentScene == 1 then
-        ButtonManager.draw()
+        for _, btn in ipairs(MenuButtons) do
+            btn:draw()
+        end
 
 
     elseif currentScene == 2 then
+        for _, btn in ipairs(GameButtons) do
+            btn:draw()
+        end
+
         local minutes
         local seconds
-        local timerText 
+        local timerText
     
         if isTimerRunning then
             minutes = math.floor(timeLeft / 60)
@@ -372,4 +430,15 @@ end
 isInsideButton = function (x, y, btn)
     return x >= btn.x and x <= btn.x + btn.width
        and y >= btn.y and y <= btn.y + btn.height
+end
+
+LoopTheGame = function()
+    print("Hello")
+    if LoopIsOn then
+        loopButton:setImage(LoopOffImage)
+        LoopIsOn = false
+    elseif not LoopIsOn then
+        loopButton:setImage(LoopOnImage)
+        LoopIsOn = true
+    end
 end
