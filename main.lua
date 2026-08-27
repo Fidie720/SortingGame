@@ -65,6 +65,7 @@ local ShuffleBowls
 local RemoveTomatoes
 local isInsideButton
 local LoopTheGame
+local TurnOffMusic
 
 --tomatoes
 local Tomatoes = {}
@@ -91,6 +92,9 @@ local loopButton
 local Background --maybe change later, because this one is AI generated
 local LoopOffImage
 local LoopOnImage
+local BackgroundMusicButton
+local BackgroundMusicOnImage
+local BackgroundMusicOffImage
 
 --game UI
 local exitButton --button to exit to menu
@@ -100,7 +104,10 @@ local GameButtons = {}
 --bools
 local AreTomatoesRemoved = false
 local LoopIsOn = false
+local isMusicPlaying = true
 
+--sounds
+local BackgroundMusic
 
 local function TimerUpdate(dt) --later make timer for this game (adapt)
     if isTimerRunning then
@@ -166,12 +173,25 @@ function love.load()
     LoopOnImage = love.graphics.newImage("sprites/LoopOn.png")
 
     loopButton:setImage(LoopOffImage)
-    MenuButtons = {startButton, loopButton}
 
+    BackgroundMusicButton = ButtonManager.new("Play music", 50, 150, 150, 150)
+    BackgroundMusicButton:setAlignment('center')
+    BackgroundMusicButton:setLabel("")
+
+    BackgroundMusicOnImage = love.graphics.newImage("sprites/SoundOn.png")
+    BackgroundMusicOffImage = love.graphics.newImage("sprites/SoundOff.png")
+
+    BackgroundMusicButton:setImage(BackgroundMusicOnImage)
+
+    MenuButtons = {startButton, loopButton, BackgroundMusicButton}
+    
     exitButton = ButtonManager.new("Exit Game", VIRTUAL_WIDTH/2, 50, 70, 70)
     exitButton:setAlignment('center')
     exitButton:setLabel("")
     exitButton:setImage(love.graphics.newImage("sprites/ExitButton.png"))
+
+    BackgroundMusic = love.audio.newSource("music/BackgroundMusic.mp3", "stream")
+    BackgroundMusic:play()
 
     GameButtons = {exitButton}
 
@@ -222,7 +242,6 @@ function love.update(dt)
             end
         end
     end
-
     
 end
 
@@ -236,6 +255,10 @@ function love.mousepressed(mx, my, button, istouch, presses)
 
         if loopButton and isInsideButton(mouseX, mouseY, loopButton) then
             LoopTheGame()
+        end
+
+        if BackgroundMusicButton and isInsideButton(mouseX, mouseY, BackgroundMusicButton) then
+            TurnOffMusic()
         end
     end
 
@@ -441,4 +464,17 @@ LoopTheGame = function()
         loopButton:setImage(LoopOnImage)
         LoopIsOn = true
     end
+end
+
+TurnOffMusic = function()
+    if isMusicPlaying then
+        isMusicPlaying = false
+        BackgroundMusicButton:setImage(BackgroundMusicOffImage)
+        BackgroundMusic:pause()
+    else
+        isMusicPlaying = true
+        BackgroundMusicButton:setImage(BackgroundMusicOnImage)
+        BackgroundMusic:play()
+    end
+
 end
