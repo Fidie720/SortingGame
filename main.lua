@@ -95,6 +95,7 @@ local LoopOnImage
 local BackgroundMusicButton
 local BackgroundMusicOnImage
 local BackgroundMusicOffImage
+local RecordText = 0
 
 --game UI
 local exitButton --button to exit to menu
@@ -108,6 +109,7 @@ local isMusicPlaying = true
 
 --sounds
 local BackgroundMusic
+local SuccessSound
 
 local function TimerUpdate(dt) --later make timer for this game (adapt)
     if isTimerRunning then
@@ -192,6 +194,8 @@ function love.load()
 
     BackgroundMusic = love.audio.newSource("music/BackgroundMusic.mp3", "stream")
     BackgroundMusic:play()
+
+    SuccessSound = love.audio.newSource("music/success.mp3", "static")
 
     GameButtons = {exitButton}
 
@@ -325,6 +329,15 @@ function love.draw()
             btn:draw()
         end
 
+        if RecordText > 0 then --work on design for record text
+            local windowWidth, windowHeight = love.graphics.getDimensions()
+            love.graphics.setColor(0, 0, 0)
+            love.graphics.rectangle("fill", VIRTUAL_WIDTH - 200, 500, 30, 30)
+            love.graphics.setColor(255, 255, 255)
+            love.graphics.print(RecordText, VIRTUAL_WIDTH - 200, 500, 0, 2, 2)
+
+        end
+
 
     elseif currentScene == 2 then
         for _, btn in ipairs(GameButtons) do
@@ -357,6 +370,12 @@ function love.draw()
             love.graphics.rectangle("fill", 50, 50, 75, 20)
             love.graphics.setColor(255, 255, 255)
             love.graphics.print(timerText, 50, 50, 0, 1, 1) --timer
+
+            -- if LoopIsOn and RecordText ~= nil then
+            --     local windowWidth, windowHeight = love.graphics.getDimensions()
+            --     --love.graphics.print(RecordText, windowWidth/2, windowHeight/2, 0, 2, 2)
+
+            -- end
 
         end
     
@@ -416,6 +435,11 @@ end
 countTomatoes = function(tomato)
     table.insert(TotalTomatoes, tomato)
 
+    if isMusicPlaying then
+        SuccessSound:stop()
+        SuccessSound:play()
+    end
+
 end
 
 ShuffleBowls = function()
@@ -437,6 +461,10 @@ ShuffleBowls = function()
 end
 
 RemoveTomatoes = function()
+    if #TotalTomatoes > RecordText then
+        RecordText = #TotalTomatoes
+    end
+
     if not AreTomatoesRemoved then
         for i, slice in pairs(TotalTomatoes) do
             TotalTomatoes[i] = nil
