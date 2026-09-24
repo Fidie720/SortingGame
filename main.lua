@@ -69,10 +69,7 @@ local TurnOffMusic
 
 --tomatoes
 local Tomatoes = {}
-<<<<<<< HEAD
 local MenuTomatoes = {}
-=======
->>>>>>> 724dec9c7b198664d0d98a5cb5d1566df1a0786d
 local TomatoImages = {}
 local TotalTomatoes = {}
 --timers
@@ -86,11 +83,8 @@ local breakTime = 5
 local breaktimeLeft = breakTime
 local ConstantminSpawnInterval = 1
 local minSpawnInterval = ConstantminSpawnInterval
-<<<<<<< HEAD
 local MenuSpawnInterval = 5
 
-=======
->>>>>>> 724dec9c7b198664d0d98a5cb5d1566df1a0786d
 
 --text
 local TotalTomatoCount
@@ -169,7 +163,6 @@ local function SpawnTomato(dt)
 
 end
 
-<<<<<<< HEAD
 local function MenuMovement(tomato)
     if currentScene ~= 1 then return end
     local startX, startY = tomato.x, tomato.y
@@ -204,20 +197,12 @@ end
 
 function love.load()
     startButton = ButtonManager.new("Start Game", 50, 50, 130, 130)
-=======
-function love.load()
-    startButton = ButtonManager.new("Start Game", VIRTUAL_WIDTH/2 - 50, VIRTUAL_HEIGHT/2 - 150, 150, 150)
->>>>>>> 724dec9c7b198664d0d98a5cb5d1566df1a0786d
     startButton:setAlignment('center')
     startButton:setLabel("")
 
     startButton:setImage(love.graphics.newImage("sprites/Play.png"))
 
-<<<<<<< HEAD
     loopButton = ButtonManager.new("Loop Game", 50, 450, 130, 130)
-=======
-    loopButton = ButtonManager.new("Loop Game", VIRTUAL_WIDTH - 200, 150, 150, 150)
->>>>>>> 724dec9c7b198664d0d98a5cb5d1566df1a0786d
     loopButton:setAlignment('center')
     loopButton:setLabel("")
 
@@ -226,11 +211,7 @@ function love.load()
 
     loopButton:setImage(LoopOffImage)
 
-<<<<<<< HEAD
     BackgroundMusicButton = ButtonManager.new("Play music", 50, 250, 130, 130)
-=======
-    BackgroundMusicButton = ButtonManager.new("Play music", 50, 150, 150, 150)
->>>>>>> 724dec9c7b198664d0d98a5cb5d1566df1a0786d
     BackgroundMusicButton:setAlignment('center')
     BackgroundMusicButton:setLabel("")
 
@@ -277,14 +258,11 @@ function love.update(dt)
     flux.update(dt)
     ButtonManager.update(dt)
 
-<<<<<<< HEAD
     if currentScene == 1 then
         MenuSpawner(dt)
     end
 
 
-=======
->>>>>>> 724dec9c7b198664d0d98a5cb5d1566df1a0786d
     if currentScene == 2 then
         if clickTimer > 0 then
             clickTimer = clickTimer - dt
@@ -400,15 +378,12 @@ function love.draw()
 
         end
 
-<<<<<<< HEAD
         for i, tomato in pairs(MenuTomatoes) do
             if tomato == nil then return end
             love.graphics.draw(tomato.image, tomato.x, tomato.y, 0, 1, 1, tomato.image:getWidth()/2, tomato.image:getHeight()/2)
 
         end
 
-=======
->>>>>>> 724dec9c7b198664d0d98a5cb5d1566df1a0786d
 
     elseif currentScene == 2 then
         for _, btn in ipairs(GameButtons) do
